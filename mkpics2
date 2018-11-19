@@ -1,0 +1,106 @@
+#!/bin/sh
+# Make sure our first cmdline param is an interger
+echo "$1" | grep -Eq '[0-9]+$'
+if [ $? = 0 ]
+then
+	# Store our columns number as a constant for future use
+	COLSMAX=$1
+	# Set our counter to the max columns, when it is exausted reset it to max
+	colsCount=$COLSMAX
+	# Shift so we have the rest of our cmdline param be the directory only
+	shift
+	# Store our output, this is section is constant
+	htmlSTART='<html>
+	<head>
+		<title>
+			Pictures
+		</title>
+	</head>
+	<body>
+		<h1>
+			Pictures
+		</h1>'
+	# cd into the directory to access years
+	cd $1
+	for year in *;
+	do
+		# if the object in year is a directory then continue
+		yearType=`file -b "$year" | grep 'directory' | wc -l`
+		if [ "$yearType" = '1' ]
+		then
+			# Store our output, this is section is constant
+			htmlMID="$htmlMID
+				<hr>
+					$year
+				<hr>
+				<table>
+					<tr>"
+			# cd into the directory to access months
+			cd $year
+			for month in *;
+			do
+				# if the object in months is a directory then continue
+				monthType=`file -b "$month" | grep 'directory' | wc -l`
+				if [ "$monthType" = '1' ] 
+				then
+					# cd into the directory to access photos
+					cd $month
+					# set up our columns max before each table
+					colsCount=$COLSMAX
+					for file in *;
+					do 
+						# Check if the file is a JPEG
+						fileType=`file -b "$file" | cut -d' ' -f 1`
+						if [ "$fileType" = 'JPEG' ]
+						then
+							# If the JPEG is valid insert it with the right form given remaining columns
+							if [ "$colsCount" -ne 0 ]
+							then
+								htmlMID="$htmlMID
+						<td>
+							<img src=\"$month/$file\" height=100>
+						</td>"
+								colsCount=`expr $colsCount - 1`
+							else
+								htmlMID="$htmlMID
+					</tr>
+					<tr>
+						<td>
+							<img src=\"$month/$file\" height=100>
+						</td>"
+								colsCount=`expr $COLSMAX - 1`
+							fi
+						# if the file is not a valid JPEG skip it and return error
+						else
+							>&2 echo "$file is not a valid JPEG"
+						fi
+					done
+					cd ..
+				# if the file is not a valid directory skip it and return error
+				else
+					>&2 echo "$month is not a valid month directory"
+				fi
+			done
+			# Store our output, this is section is constant
+			htmlMID="$htmlMID	
+					</tr>
+				</table>"
+			cd ..
+		# if the file is not a valid directory skip it and return error
+		else
+			if [ "$year" != 'mkpics2' ]
+			then
+				>&2 echo "$year is not a valid year directory"
+			fi
+		fi
+	done
+	# Store our output, this is section is constant
+	htmlEND="	</body>
+</html>"
+	echo "$htmlSTART"
+	echo "$htmlMID"
+	echo "$htmlEND"
+# If our first cmdline param is not an interger return an error
+else
+	>&2 echo "Columns incorrectly and/or not specified"
+fi

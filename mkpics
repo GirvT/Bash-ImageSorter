@@ -1,0 +1,40 @@
+#!/bin/sh
+# Loop through each object in the directory
+for i in $1/*
+do
+	# retrieve the file type and get the exif data
+	fileType=`file -b "$i" | cut -d" " -f 1`
+	# exif data returns a non-zero number if it exists otherwise return 0
+	exifExists=`/courses/courses/cscb09s18/bin/exiftime -tg "$i" 2> /dev/null | wc -l`
+	# Check if the file's type is a JPEG and we have a non-zero exif
+	if [ "$fileType" = 'JPEG' ] && [ "$exifExists" -ne 0 ]
+	then
+		# Get the exifdata for Year and Month
+		imgYear=`/courses/courses/cscb09s18/bin/exiftime -tg "$i" | cut -d":" -f 2 | cut -d" " -f 2`
+		imgMonth=`/courses/courses/cscb09s18/bin/exiftime -tg "$i" | cut -d":" -f 3`
+		# If year directory is found
+		if [ -d $imgYear ]
+		then
+			# If month directory is found
+			if [ -d $imgYear/$imgMonth ]
+			then
+				# Move the file into its respective directory
+				mv "$i" $imgYear/$imgMonth
+			else
+				# Otherwise create the directory and move it
+				mkdir $imgYear/$imgMonth
+				mv "$i" $imgYear/$imgMonth
+			fi
+		else
+			# Otherwise make the year and month directory
+			mkdir $imgYear
+			mkdir $imgYear/$imgMonth
+			# Move the file into this new directory
+			mv "$i" $imgYear/$imgMonth
+			echo `$i pwd`''
+		fi
+	else
+		# return error if a JPEG is not found
+		>&2 echo "$i has no EXIF data or is not a JPEG"
+	fi
+done
